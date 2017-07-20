@@ -17,7 +17,7 @@
     "doctrine/annotations": "1.*"
   },
   "autoload": {
-    "psr-4": { "Targus\\ObjectFetcher": "" }
+    "psr-4": { "Targus\\ObjectFetcher\\": "" }
   },
   "repositories": [
     {
