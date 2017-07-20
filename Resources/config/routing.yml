@@ -1,0 +1,3 @@
+targus_object_fetcher_homepage:
+    path:     /
+    defaults: { _controller: TargusObjectFetcherBundle:Default:index }

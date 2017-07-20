@@ -1,0 +1,5 @@
+targus_object_fetcher:
+    defaults:
+        required: false
+        profile: 'common'
+        dateTimeFormat: 'Y-m-d\TH:i:sP'

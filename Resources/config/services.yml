@@ -1,0 +1,4 @@
+services:
+    targus.object_fetcher.service:
+        class: Targus\ObjectFetcherBundle\Objects\ObjectFetcherService
+        arguments: ['@annotations.reader', '%targus.object_fetcher%']
