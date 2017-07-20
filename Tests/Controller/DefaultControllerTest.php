@@ -1,6 +1,6 @@
 <?php
 
-namespace Targus\ObjectFetcherBundle\Tests\Controller;
+namespace Targus\ObjectFetcher\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 

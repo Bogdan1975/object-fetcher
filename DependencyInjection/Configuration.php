@@ -1,6 +1,6 @@
 <?php
 
-namespace Targus\ObjectFetcherBundle\DependencyInjection;
+namespace Targus\ObjectFetcher\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;

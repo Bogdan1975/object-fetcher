@@ -1,6 +1,6 @@
 <?php
 
-namespace Targus\ObjectFetcherBundle\Controller;
+namespace Targus\ObjectFetcher\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace Targus\ObjectFetcherBundle;
+namespace Targus\ObjectFetcher;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 

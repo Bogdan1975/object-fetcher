@@ -6,18 +6,18 @@
  * Time: 18:42
  */
 
-namespace Targus\ObjectFetcherBundle\Objects;
+namespace Targus\ObjectFetcher\Objects;
 
 use Doctrine\Common\Annotations\Reader;
 use Symfony\Component\PropertyInfo\Extractor\PhpDocExtractor;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
 use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
-use Targus\ObjectFetcherBundle\Annotations\Defaults;
-use Targus\ObjectFetcherBundle\Annotations\Field;
-use Targus\ObjectFetcherBundle\Exceptions\Exception;
-use Targus\ObjectFetcherBundle\Exceptions\MissingMandatoryField;
-use Targus\ObjectFetcherBundle\Exceptions\TypeConversionException;
-use Targus\ObjectFetcherBundle\Exceptions\ValidationError;
+use Targus\ObjectFetcher\Annotations\Defaults;
+use Targus\ObjectFetcher\Annotations\Field;
+use Targus\ObjectFetcher\Exceptions\Exception;
+use Targus\ObjectFetcher\Exceptions\MissingMandatoryField;
+use Targus\ObjectFetcher\Exceptions\TypeConversionException;
+use Targus\ObjectFetcher\Exceptions\ValidationError;
 
 
 class ObjectFetcherService

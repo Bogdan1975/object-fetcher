@@ -8,7 +8,7 @@
  * @author Bogdan Shapoval <it.targus@gmail.com>. 17.07.2017
  */
 
-namespace Targus\ObjectFetcherBundle\Exceptions;
+namespace Targus\ObjectFetcher\Exceptions;
 
 
 class MissingMandatoryField extends Exception

@@ -8,7 +8,7 @@
  * @author Bogdan Shapoval <it.targus@gmail.com>. 14.07.2017
  */
 
-namespace Targus\ObjectFetcherBundle\Annotations;
+namespace Targus\ObjectFetcher\Annotations;
 
 
 use Doctrine\Common\Annotations\Annotation;

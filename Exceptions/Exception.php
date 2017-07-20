@@ -1,6 +1,6 @@
 <?php
 
-namespace Targus\ObjectFetcherBundle\Exceptions;
+namespace Targus\ObjectFetcher\Exceptions;
 
 /**
  * Created by PhpStorm.

@@ -6,7 +6,7 @@
  * Time: 18:43
  */
 
-namespace Targus\ObjectFetcherBundle\Exceptions;
+namespace Targus\ObjectFetcher\Exceptions;
 
 
 class TypeConversionException extends Exception

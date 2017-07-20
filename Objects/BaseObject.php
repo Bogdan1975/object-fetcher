@@ -6,7 +6,7 @@
  * Time: 15:57
  */
 
-namespace Targus\ObjectFetcherBundle\Objects;
+namespace Targus\ObjectFetcher\Objects;
 
 
 class BaseObject
