@@ -171,7 +171,7 @@ class ObjectFetcherService
             } else {
                 $typeSource = $type->isCollection() ? $type->getCollectionValueType() : $type;
                 $info['isArray'] = $annot->isArray ?? $type->isCollection();
-                $info['type'] = self::BUILTIN_TYPES[$typeSource->getBuiltinType()];
+                $info['type'] = $typeSource ? self::BUILTIN_TYPES[$typeSource->getBuiltinType()] : self::TYPE_RAW;
                 if ('object' === $info['type']) {
                     $info['type'] = $typeSource->getClassName();
                     if ($info['type'] === 'DateTime') {
@@ -238,7 +238,8 @@ class ObjectFetcherService
             $mappedFrom = null;
         }
         if (null === $value && !$info['nullable']) {
-            throw new MissingMandatoryField("Field '$propName' is not nullable");
+            $className = get_class($obj);
+            throw new MissingMandatoryField("Field '$propName' is not nullable. Class '$className'");
         }
 
         if (null !== $value) {
