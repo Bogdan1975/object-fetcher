@@ -12,6 +12,7 @@ use Doctrine\Common\Annotations\Reader;
 use Symfony\Component\PropertyInfo\Extractor\PhpDocExtractor;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
 use Symfony\Component\PropertyInfo\PropertyInfoExtractor;
+use Targus\ObjectFetcher\Annotations\ArraySettings;
 use Targus\ObjectFetcher\Annotations\Defaults;
 use Targus\ObjectFetcher\Annotations\Field;
 use Targus\ObjectFetcher\Exceptions\Exception;
@@ -162,15 +163,15 @@ class ObjectFetcherService
         // Define 'type' and 'isArray' attributes
         if ($annot->type) {
             $info['type'] = $annot->type;
-            if (null !== $annot->isArray) {
-                $info['isArray'] = $annot->isArray;
+            if (null !== $annot->array) {
+                $info['isArray'] = $annot->array;
             }
         } else {
             if (null === $type) {
                 $info['type'] = self::TYPE_RAW;
             } else {
                 $typeSource = $type->isCollection() ? $type->getCollectionValueType() : $type;
-                $info['isArray'] = $annot->isArray ?? $type->isCollection();
+                $info['isArray'] = $annot->array ?? $type->isCollection();
                 $info['type'] = $typeSource ? self::BUILTIN_TYPES[$typeSource->getBuiltinType()] : self::TYPE_RAW;
                 if ('object' === $info['type']) {
                     $info['type'] = $typeSource->getClassName();
@@ -179,6 +180,14 @@ class ObjectFetcherService
                     }
                 }
             }
+        }
+
+        // Convert 'isArray' to a single 'ArraySettings' annotation object
+        if (is_array($info['isArray'])) {
+            $info['isArray'] = array_pop($info['isArray']);
+        }
+        if (is_bool($info['isArray']) && $info['isArray']) {
+            $info['isArray'] = new ArraySettings([]);
         }
 
         // Define 'nullable' attribute
@@ -394,8 +403,12 @@ class ObjectFetcherService
         $isArray = $info['isArray'];
         if ($isArray) {
             $newValue = [];
-            foreach ($value as $item) {
-                $newValue[] = $this->fetchToTypeSimple($item, $info, $profiles, $includeDefaultProfile);
+            foreach ($value as $key => $item) {
+                if ($isArray->preserveKeys && ($isArray->preserveOnlyStringKeys === false || !is_numeric($key))) {
+                    $newValue[$key] = $this->fetchToTypeSimple($item, $info, $profiles, $includeDefaultProfile);
+                } else {
+                    $newValue[] = $this->fetchToTypeSimple($item, $info, $profiles, $includeDefaultProfile);
+                }
             }
         } else {
             $newValue = $this->fetchToTypeSimple($value, $info, $profiles, $includeDefaultProfile);

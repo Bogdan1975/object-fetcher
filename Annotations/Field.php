@@ -14,8 +14,10 @@ namespace Targus\ObjectFetcher\Annotations;
 use Doctrine\Common\Annotations\Annotation;
 
 /**
- * Class Type
+ * Class Field
  * @package Targus\ShopifyBundle\Objects\ObjectFetcher\Annotations
+ *
+ * @author Bogdan Shapoval <it.targus@gmail.com>. 14.07.2017
  *
  * @Annotation()
  * @Target({"PROPERTY"})
@@ -28,9 +30,14 @@ class Field extends FetcherAnnotation
     public $type;
 
     /**
-     * @var bool
+     * @var ArraySettings
      */
-    public $isArray;
+    public $array;
+
+    /**
+     * @var
+     */
+    public $preserveKeys;
 
     /**
      * @var string
