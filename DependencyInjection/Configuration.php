@@ -33,6 +33,9 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('dateTimeFormat')
                             ->defaultValue(DATE_W3C)
                         ->end()
+                        ->booleanNode('nullable')
+                            ->defaultValue(true)
+                        ->end()
                     ->end()
                 ->end();
 

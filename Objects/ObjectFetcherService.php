@@ -117,6 +117,7 @@ class ObjectFetcherService
             'required' => $classDefaults && null !== $classDefaults->required ? $classDefaults->required : $this->defaults['required'],
             'profile' => $classDefaults && null !== $classDefaults->profile ? $classDefaults->profile : $this->defaults['profile'],
             'dateTimeFormat' => $classDefaults && null !== $classDefaults->dateTimeFormat ? $classDefaults->dateTimeFormat : $this->defaults['dateTimeFormat'],
+            'nullable' => $classDefaults && null !== $classDefaults->nullable ? $classDefaults->nullable : $this->defaults['nullable'],
         ];
         if ($obj instanceof BaseObject) {
             $obj->setDefaults($defaults);
@@ -158,7 +159,7 @@ class ObjectFetcherService
         ];
 
         /** @var \Symfony\Component\PropertyInfo\Type $type */
-        $type = (count($types) === 0 && count($types) > 1) ? null : $type = $types[0];
+        $type = (count($types) === 0 && count($types) > 1) ? null : $type = array_pop($types);
 
         // Define 'type' and 'isArray' attributes
         if ($annot->type) {
@@ -191,7 +192,7 @@ class ObjectFetcherService
         }
 
         // Define 'nullable' attribute
-        $info['nullable'] = $annot->nullable ?? $type->isNullable();
+        $info['nullable'] = $annot->nullable ?? ( $type ? $type->isNullable() : $defaults['nullable'] );
 
         // Define 'required' attribute
         if (null !== $annot->required) {
@@ -363,6 +364,10 @@ class ObjectFetcherService
             throw new TypeConversionException("Unknown type '$type'");
         }
         $newValue = null;
+
+        if (null === $value && $info['nullable']) {
+            return null;
+        }
 
         switch ($type) {
             case self::TYPE_STRING:

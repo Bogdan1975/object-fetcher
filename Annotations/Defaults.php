@@ -37,4 +37,10 @@ class Defaults extends FetcherAnnotation
      * @var string
      */
     public $dateTimeFormat;
+
+
+    /**
+     * @var bool
+     */
+    public $nullable = true;
 }
