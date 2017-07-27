@@ -392,11 +392,14 @@ class ObjectFetcherService
             case self::TYPE_RAW:
                 $newValue = $value;
                 break;
+            case self::TYPE_ARRAY:
+                $newValue = $this->fetch($type, $value, $profiles, $includeDefaultProfile);
+                break;
             default:
                 if (!class_exists($type)) {
                     throw new TypeConversionException("Unknown type '$type'");
                 }
-                $newValue = $this->fetch($type, $value, $profiles, $includeDefaultProfile);
+                $newValue = $value;
                 break;
         }
 
