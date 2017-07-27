@@ -228,13 +228,13 @@ class ObjectFetcherService
      * @param \ReflectionProperty $property
      *
      * @throws Exception
-     *
      * @throws MissingMandatoryField
      * @throws ValidationError
      */
     private function hydrateProperty($obj, $data, $info, \ReflectionProperty $property, $profiles, $includeDefaultProfile)
     {
         $propName = $property->getName();
+        $className = get_class($obj);
         $dataPropName =  $info['sourceName'] ?? $propName;
         try {
             $tmp = $this->getValueFromData($data, $dataPropName);
@@ -248,12 +248,15 @@ class ObjectFetcherService
             $mappedFrom = null;
         }
         if (null === $value && !$info['nullable']) {
-            $className = get_class($obj);
             throw new MissingMandatoryField("Field '$propName' is not nullable. Class '$className'");
         }
 
         if (null !== $value) {
-            $value = $this->fetchToType($value, $info, $profiles, $includeDefaultProfile);
+            try {
+                $value = $this->fetchToType($value, $info, $profiles, $includeDefaultProfile);
+            } catch (\Exception $e) {
+                throw new Exception("Object '{$className}'. '{$propName}' field fetching error. \n" . $e->getMessage());
+            }
         }
 
         // Validate enum values
