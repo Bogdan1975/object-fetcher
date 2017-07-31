@@ -72,6 +72,12 @@ class BaseObject
         return $this;
     }
 
+    public function getInfo(string $fieldName)
+    {
+
+        return isset($this->metaInfo, $this->metaInfo[$fieldName], $this->metaInfo[$fieldName]['info']) ? $this->metaInfo[$fieldName]['info'] : null;
+    }
+
     /**
      * @param string $str
      *
@@ -165,6 +171,7 @@ class BaseObject
             if ($value instanceof BaseObject) {
                 $result = $value->convertToArray($properyNames, $filter, $profiles, $includeDefaultProfile);
             } elseif ($value instanceof \DateTime) {
+                $outputDateTimeFormat = isset($info, $info['outputDateTimeFormat']) ? $info['outputDateTimeFormat'] :
                 $result = $value->format($info['outputDateTimeFormat']);
             } else {
                 $result = (array)$value;
@@ -172,6 +179,11 @@ class BaseObject
         }
 
         return $result;
+    }
+
+    public static function createInstance()
+    {
+        return ObjectFetcherService::createObject(self::class);
     }
 
 }

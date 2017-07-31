@@ -56,21 +56,21 @@ class ObjectFetcherService
     /**
      * @var Reader
      */
-    private $annotationReader;
+    private static $annotationReader;
 
     /**
      * @var PropertyInfoExtractor
      */
-    private $propertyInfoExtractor;
+    private static $propertyInfoExtractor;
 
     /**
      * @var array
      */
-    private $defaults;
+    private static $defaults;
 
     public function __construct(Reader $annotationReader, $config)
     {
-        $this->annotationReader = $annotationReader;
+        self::$annotationReader = $annotationReader;
 
         // a full list of extractors is shown further below
         $phpDocExtractor = new PhpDocExtractor();
@@ -94,30 +94,24 @@ class ObjectFetcherService
             $descriptionExtractors,
             $accessExtractors
         );
-        $this->propertyInfoExtractor = $propertyInfo;
+        self::$propertyInfoExtractor = $propertyInfo;
 
-        $this->defaults = $config['defaults'];
+        self::$defaults = $config['defaults'];
     }
 
-    public function fetch(string $className, array $data, $profiles = [], $includeDefaultProfile = true)
+    public static function createObject(string $className)
     {
-        if (!is_array($profiles)) {
-            $profiles = (array)$profiles;
-        }
-        if ($includeDefaultProfile && !in_array($this->defaults['profile'], $profiles, false)) {
-            $profiles[] = $this->defaults['profile'];
-        }
         $reflection = new \ReflectionClass($className);
         $properties = $reflection->getProperties();
         $obj = new $className();
 
         /** @var Defaults $classDefaults */
-        $classDefaults = $this->annotationReader->getClassAnnotation($reflection, Defaults::class);
+        $classDefaults = self::$annotationReader->getClassAnnotation($reflection, Defaults::class);
         $defaults = [
-            'required' => $classDefaults && null !== $classDefaults->required ? $classDefaults->required : $this->defaults['required'],
-            'profile' => $classDefaults && null !== $classDefaults->profile ? $classDefaults->profile : $this->defaults['profile'],
-            'dateTimeFormat' => $classDefaults && null !== $classDefaults->dateTimeFormat ? $classDefaults->dateTimeFormat : $this->defaults['dateTimeFormat'],
-            'nullable' => $classDefaults && null !== $classDefaults->nullable ? $classDefaults->nullable : $this->defaults['nullable'],
+            'required' => $classDefaults && null !== $classDefaults->required ? $classDefaults->required : self::$defaults['required'],
+            'profile' => $classDefaults && null !== $classDefaults->profile ? $classDefaults->profile : self::$defaults['profile'],
+            'dateTimeFormat' => $classDefaults && null !== $classDefaults->dateTimeFormat ? $classDefaults->dateTimeFormat : self::$defaults['dateTimeFormat'],
+            'nullable' => $classDefaults && null !== $classDefaults->nullable ? $classDefaults->nullable : self::$defaults['nullable'],
         ];
         if ($obj instanceof BaseObject) {
             $obj->setDefaults($defaults);
@@ -125,17 +119,41 @@ class ObjectFetcherService
 
         foreach ($properties as $property) {
             /** @var Field|null $fieldInfoAnnot */
-            $fieldInfoAnnot = $this->annotationReader->getPropertyAnnotation($property, Field::class);
+            $fieldInfoAnnot = self::$annotationReader->getPropertyAnnotation($property, Field::class);
             $info = [];
             if ($fieldInfoAnnot) {
-                $types = $this->propertyInfoExtractor->getTypes($className, $property->getName());
-                $info = $this->getInfoByFieldAnnot($fieldInfoAnnot, $defaults, $types);
+                $types = self::$propertyInfoExtractor->getTypes($className, $property->getName());
+                $info = self::getInfoByFieldAnnot($fieldInfoAnnot, $defaults, $types);
             }
 
             if (!empty($info)) {
                 if ($obj instanceof BaseObject) {
                     $obj->setInfo($property->getName(), $info);
                 }
+            }
+        }
+
+        return $obj;
+    }
+
+    public function fetch(string $className, array $data, $profiles = [], $includeDefaultProfile = true)
+    {
+        if (!is_array($profiles)) {
+            $profiles = (array)$profiles;
+        }
+        if ($includeDefaultProfile && !in_array(self::$defaults['profile'], $profiles, false)) {
+            $profiles[] = self::$defaults['profile'];
+        }
+
+        /** @var BaseObject $obj */
+        $obj = self::createObject($className);
+
+        $reflection = new \ReflectionClass($className);
+        $properties = $reflection->getProperties();
+
+        foreach ($properties as $property) {
+            $info = $obj->getInfo($property->getName());
+            if (!empty($info)) {
                 if (count(array_intersect($info['profiles'], $profiles))) {
                     $this->hydrateProperty($obj, $data, $info, $property, $profiles, $includeDefaultProfile);
                 }
@@ -144,13 +162,14 @@ class ObjectFetcherService
 
         // Custom obj validation
         if (method_exists($obj, 'validate') && !$obj->validate()) {
-            // @ToDo: Make exception. Targus. 14.07.2017
+            // @ToDo: Make custom exception. Targus. 14.07.2017
+            throw new \Exception('Validation error');
         }
 
         return $obj;
     }
 
-    private function getInfoByFieldAnnot(Field $annot, $defaults, array $types = null)
+    private static function getInfoByFieldAnnot(Field $annot, $defaults, array $types = null)
     {
         $types = (array)$types;
         $info = [
