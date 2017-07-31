@@ -14,6 +14,7 @@ class BaseObject
 
     const PROPERTY_NAMES_OBJECT = 'object';
     const PROPERTY_NAMES_DATA = 'data';
+    const PROPERTY_NAMES_SNAKE = 'snake';
 
     const FILTER_ALL = 'all';
     const FILTER_DIRTY_ONLY = 'dirty';
@@ -71,6 +72,30 @@ class BaseObject
         return $this;
     }
 
+    /**
+     * @param string $str
+     *
+     * @return string
+     */
+    private function camelToSnake(string $str)
+    {
+        if (!is_string($str)) {
+            return $str;
+        }
+        $newStr = '';
+        $strLen = strlen($str);
+        for ($i = 0; $i < $strLen; $i++) {
+            $lowCase = strtolower($str[$i]);
+            if ($str[$i] != $lowCase) {
+                $newStr .= '_' . $lowCase;
+            } else {
+                $newStr .= $str[$i];
+            }
+        }
+
+        return $newStr;
+    }
+
 
     public function convertToArray(string $properyNames = self::PROPERTY_NAMES_OBJECT, string $filter = self::FILTER_ALL, $profiles = [], $includeDefaultProfile = true)
     {
@@ -113,6 +138,9 @@ class BaseObject
                         break;
                     case self::PROPERTY_NAMES_DATA:
                         $index = $map ?? $propName;
+                        break;
+                    case self::PROPERTY_NAMES_SNAKE:
+                        $index = $this->camelToSnake($propName);
                         break;
                     default:
                         // @ToDo: Make right exception. Targus. 17.07.2017
