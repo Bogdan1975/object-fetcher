@@ -30,7 +30,7 @@ class GenerateTypescriptInterfaceCommand extends ContainerAwareCommand
         }
 
         $fetcher =  $this->getContainer()->get('targus.object_fetcher.service');
-        $text = $fetcher->createInterface($argument);
+        $text = $fetcher->createInterface($argument)['text'];
 
         $output->writeln($text);
     }

@@ -502,7 +502,9 @@ class ObjectFetcherService
                     $itemClassName = array_pop($tmp);
                     $itemInterfaceName = 'I' . $itemClassName;
                     if (!in_array($itemInterfaceName, $created)) {
-                        $depenndencies .= self::createInterface($info['type'], $created) . PHP_EOL . PHP_EOL;
+                        $dep = $this->createInterface($info['type'], $created);
+                        $depenndencies .= $dep['text'] . PHP_EOL . PHP_EOL;
+                        $created = array_merge($created, $dep['created']);
                     }
                     $newType = $itemInterfaceName;
                     $fetchVal = 'fetchDataTo' . $itemInterfaceName . "(%s)";
@@ -519,7 +521,7 @@ class ObjectFetcherService
                 } else {
                     $fetchVal = sprintf($fetchVal, "data.{$propertyName}");
                 }
-                $classText .= PHP_EOL;
+                $classText .= ';' . PHP_EOL;
                 $indent = '';
                 if (!$info['required']) {
                     $fetchText .= "    if (data.hasOwnProperty('{$propertyName}')) {" . PHP_EOL;
@@ -551,7 +553,12 @@ class ObjectFetcherService
         $classText .= '    }' . PHP_EOL;
         $classText .= '}' . PHP_EOL;
 
-        return $depenndencies . $text . PHP_EOL . PHP_EOL . $fetchText . PHP_EOL . $classText;
+        $result = [
+            'text' => $depenndencies . $text . PHP_EOL . PHP_EOL . $fetchText . PHP_EOL . $classText,
+            'created' => $created,
+        ];
+
+        return $result;
     }
 
     private static function convertTypeToTypescript(string $type)
