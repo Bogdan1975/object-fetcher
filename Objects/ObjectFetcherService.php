@@ -102,8 +102,8 @@ class ObjectFetcherService
 
         self::$TYPESCRIPT_TYPES = [
                 self::TYPE_STRING => 'string',
-                self::TYPE_INTEGER => 'numeric',
-                self::TYPE_FLOAT => 'numeric',
+                self::TYPE_INTEGER => 'number',
+                self::TYPE_FLOAT => 'number',
                 self::TYPE_BOOLEAN => 'boolean',
                 self::TYPE_OBJECT => 'object',
                 self::TYPE_DATE => 'Date',
