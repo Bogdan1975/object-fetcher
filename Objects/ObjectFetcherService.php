@@ -53,6 +53,8 @@ class ObjectFetcherService
         'object' => self::TYPE_OBJECT,
     ];
 
+    private static $TYPESCRIPT_TYPES;
+
     /**
      * @var Reader
      */
@@ -97,6 +99,16 @@ class ObjectFetcherService
         self::$propertyInfoExtractor = $propertyInfo;
 
         self::$defaults = $config['defaults'];
+
+        self::$TYPESCRIPT_TYPES = [
+                self::TYPE_STRING => 'string',
+                self::TYPE_INTEGER => 'numeric',
+                self::TYPE_FLOAT => 'numeric',
+                self::TYPE_BOOLEAN => 'boolean',
+                self::TYPE_OBJECT => 'object',
+                self::TYPE_DATE => 'Date',
+                self::TYPE_RAW => 'any',
+        ];
     }
 
     public static function createObject(string $className)
@@ -447,6 +459,113 @@ class ObjectFetcherService
     private function validate($info, $value)
     {
         return true;
+    }
+
+    public function createInterface(string $className, array $created = [])
+    {
+        $tmp = explode('\\', $className);
+        $className_ = array_pop($tmp);
+        $interfaceName = 'I' . $className_;
+        $created[] = $interfaceName;
+
+        $fetchText = 'export function fetchDataTo' . $interfaceName . "(data): $interfaceName {" . PHP_EOL;
+        $fetchText .= '    let obj = {};' . PHP_EOL;
+        $classText = "export class $className_ implements $interfaceName {" . PHP_EOL;
+        $text = 'export interface ' . $interfaceName . ' {' . PHP_EOL;
+
+        /** @var BaseObject $obj */
+        $obj = self::createObject($className);
+        $depenndencies = '';
+
+        $reflection = new \ReflectionClass($className);
+        $properties = $reflection->getProperties();
+
+        foreach ($properties as $property) {
+            $propertyName = $property->getName();
+            $info = $obj->getInfo($propertyName);
+            if (!empty($info)) {
+                $text .= '    ' . $propertyName;
+                $classText .= '    public ' . $propertyName . ': ';
+                if (!$info['required']) {
+                    $text .= '?';
+                } else {
+                    $fetchText .= "    if (!data.hasOwnProperty('{$propertyName}')) throw new Error('Property \"{$propertyName}\" is required');" . PHP_EOL;
+                }
+                if (!$info['nullable']) {
+                    $fetchText .= "    if (!data.hasOwnProperty('{$propertyName}')) throw new Error('Property \"{$propertyName}\" is required');" . PHP_EOL;
+                }
+                $text .= ': ';
+                $newType = self::convertTypeToTypescript($info['type']);
+                $itemClassName = $newType;
+                if ($newType === 'object') {
+                    $tmp = explode('\\', $info['type']);
+                    $itemClassName = array_pop($tmp);
+                    $itemInterfaceName = 'I' . $itemClassName;
+                    if (!in_array($itemInterfaceName, $created)) {
+                        $depenndencies .= self::createInterface($info['type'], $created) . PHP_EOL . PHP_EOL;
+                    }
+                    $newType = $itemInterfaceName;
+                    $fetchVal = 'fetchDataTo' . $itemInterfaceName . "(%s)";
+                } else {
+                    $fetchVal = "data.{$propertyName}";
+                }
+                $text .= $newType;
+                $classText .= $itemClassName;
+                if ($info['isArray']) {
+                    $text .= '[]';
+                    $classText .= '[]';
+                    $fetchText .= "    if (typeof(data.{$propertyName}) !== 'object && !Array.isArray(data.{$propertyName})) throw new Error('Property \"$propertyName\" must be an array');" . PHP_EOL;
+                    $fetchVal = "data.{$propertyName}.map(item => " . sprintf($fetchVal, 'item') . ')';
+                } else {
+                    $fetchVal = sprintf($fetchVal, "data.{$propertyName}");
+                }
+                $classText .= PHP_EOL;
+                $indent = '';
+                if (!$info['required']) {
+                    $fetchText .= "    if (data.hasOwnProperty('{$propertyName}')) {" . PHP_EOL;
+                    $indent = '    ';
+                }
+                if (!$info['nullable']) {
+                    $fetchText .= $indent . "    if (data.$propertyName == null) throw new Error('Property \"$propertyName\" is not nullable, null given as value');" . PHP_EOL;
+                    $fetchText .= $indent . "    obj.{$propertyName} = {$fetchVal};" . PHP_EOL;
+                } else {
+                    if ($fetchVal === "data.{$propertyName}") {
+                        $fetchText .= $indent . "    obj.{$propertyName} = data.{$propertyName};" . PHP_EOL;
+                    } else {
+                        $fetchText .= $indent . "    obj.{$propertyName} = data.{$propertyName} ? {$fetchVal} : null;" . PHP_EOL;
+                    }
+                }
+                if (!$info['required']) {
+                    $fetchText .= '    }' . PHP_EOL;
+                }
+                $text .= ';' . PHP_EOL;
+            }
+        }
+        $text .= '}';
+
+        $fetchText .= PHP_EOL . '    return obj;' . PHP_EOL;
+        $fetchText .= '}' . PHP_EOL;
+
+        $classText .= PHP_EOL . '    constructor(data: any) {' . PHP_EOL;
+        $classText .= '        Object.assign(this, fetchDataTo' . $interfaceName . '(data));' . PHP_EOL;
+        $classText .= '    }' . PHP_EOL;
+        $classText .= '}' . PHP_EOL;
+
+        return $depenndencies . $text . PHP_EOL . PHP_EOL . $fetchText . PHP_EOL . $classText;
+    }
+
+    private static function convertTypeToTypescript(string $type)
+    {
+        if (!in_array($type, self::TYPES, false) && !class_exists($type)) {
+            throw new TypeConversionException("Unknown type '$type'");
+        }
+        if (!in_array($type, self::TYPES, false) && class_exists($type)) {
+            $newType = 'object';
+        } else {
+            $newType = self::$TYPESCRIPT_TYPES[$type];
+        }
+
+        return $newType;
     }
 
 }
