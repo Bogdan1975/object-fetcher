@@ -507,7 +507,7 @@ class ObjectFetcherService
                         $created = array_merge($created, $dep['created']);
                     }
                     $newType = $itemInterfaceName;
-                    $fetchVal = 'fetchDataTo' . $itemInterfaceName . "(%s)";
+                    $fetchVal = 'new ' . $itemClassName . "(%s)";
                 } else {
                     $fetchVal = "data.{$propertyName}";
                 }
