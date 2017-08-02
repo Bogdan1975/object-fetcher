@@ -469,7 +469,7 @@ class ObjectFetcherService
         $created[] = $interfaceName;
 
         $fetchText = 'export function fetchDataTo' . $interfaceName . "(data): $interfaceName {" . PHP_EOL;
-        $fetchText .= '    let obj = {};' . PHP_EOL;
+        $fetchText .= "    let obj: $interfaceName = {};" . PHP_EOL;
         $classText = "export class $className_ implements $interfaceName {" . PHP_EOL;
         $text = 'export interface ' . $interfaceName . ' {' . PHP_EOL;
 
