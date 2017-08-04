@@ -78,4 +78,25 @@ class Field extends FetcherAnnotation
      * @var string
      */
     public $outputDateTimeFormat;
+
+    /**
+     * Merge with other Field annotation (inheritance)
+     *
+     * @param Field $obj
+     */
+    public function merge(Field $obj)
+    {
+        $this->type = $this->type ?? $obj->type;
+        $this->array = $this->array ?? $obj->array;
+        $this->preserveKeys = $this->preserveKeys ?? $obj->preserveKeys;
+        $this->sourceName = $this->sourceName ?? $obj->sourceName;
+        $this->required = $this->required ?? $obj->required;
+        $this->nullable = $this->nullable ?? $obj->nullable;
+        $this->default = $this->default ?? $obj->default;
+        $this->enum = $this->enum ?? $obj->enum;
+        $this->profiles = $this->profiles ?? $obj->profiles;
+        $this->inputDateTimeFormat = $this->inputDateTimeFormat ?? $obj->inputDateTimeFormat;
+        $this->outputDateTimeFormat = $this->outputDateTimeFormat ?? $obj->outputDateTimeFormat;
+    }
+
 }
