@@ -85,6 +85,11 @@ class ObjectFetcherService
      */
     private $rawMode = false;
 
+    /**
+     * @var ObjectFetcherService
+     */
+    private static $instance;
+
     public function __construct(Reader $annotationReader, $config)
     {
         self::$annotationReader = $annotationReader;
@@ -124,6 +129,8 @@ class ObjectFetcherService
                 self::TYPE_DATE => 'Date',
                 self::TYPE_RAW => 'any',
         ];
+
+        self::$instance = $this;
     }
 
     /**
@@ -164,11 +171,32 @@ class ObjectFetcherService
         return $this;
     }
 
-    public static function createObject(string $className)
+    private static function getPropertyAnnotation(\ReflectionClass $reflection, \ReflectionProperty $property)
     {
+        $fieldInfoAnnot = static::$annotationReader->getPropertyAnnotation($property, Field::class);
+        if ($parentReflection = $reflection->getParentClass()) {
+            if ($parentReflection->hasProperty($property->getName())) {
+                $parentProperty = $parentReflection->getProperty($property->getName());
+                $parentFieldInfoAnnot = self::getPropertyAnnotation($parentReflection, $parentProperty);
+                if (!empty($parentFieldInfoAnnot)) {
+                    $fieldInfoAnnot = $fieldInfoAnnot ? array_merge($parentFieldInfoAnnot, $fieldInfoAnnot) : $parentFieldInfoAnnot;
+                    if (null === $fieldInfoAnnot) {
+                        $fieldInfoAnnot = $parentFieldInfoAnnot;
+                    } else {
+                        $fieldInfoAnnot->merge($parentFieldInfoAnnot);
+                    }
+                }
+            }
+        }
+
+        return $fieldInfoAnnot;
+    }
+
+    public static function collectMetaData($obj)
+    {
+        $className = get_class($obj);
         $reflection = new \ReflectionClass($className);
         $properties = $reflection->getProperties();
-        $obj = new $className();
 
         /** @var Defaults $classDefaults */
         $classDefaults = self::$annotationReader->getClassAnnotation($reflection, Defaults::class);
@@ -184,11 +212,11 @@ class ObjectFetcherService
 
         foreach ($properties as $property) {
             /** @var Field|null $fieldInfoAnnot */
-            $fieldInfoAnnot = self::$annotationReader->getPropertyAnnotation($property, Field::class);
+            $fieldInfoAnnot = self::getPropertyAnnotation($reflection, $property);
             $info = [];
             if ($fieldInfoAnnot) {
-                $types = self::$propertyInfoExtractor->getTypes($className, $property->getName());
-                $info = self::getInfoByFieldAnnot($fieldInfoAnnot, $defaults, $types);
+                $types = static::$propertyInfoExtractor->getTypes($className, $property->getName());
+                $info = static::getInfoByFieldAnnot($fieldInfoAnnot, $defaults, $types);
             }
 
             if (!empty($info)) {
@@ -197,6 +225,12 @@ class ObjectFetcherService
                 }
             }
         }
+    }
+
+    public static function createObject(string $className)
+    {
+        $obj = new $className();
+        self::collectMetaData($obj);
 
         return $obj;
     }
@@ -226,7 +260,7 @@ class ObjectFetcherService
         }
 
         // Custom obj validation
-        if (method_exists($obj, 'validate') && !$obj->validate()) {
+        if (method_exists($obj, 'fetchValidate') && !$obj->fetchValidate()) {
             // @ToDo: Make custom exception. Targus. 14.07.2017
             throw new \Exception('Validation error');
         }
@@ -359,21 +393,30 @@ class ObjectFetcherService
             // @ToDo: Make exception. Targus. 14.07.2017
         }
 
-        $modifiers = $property->getModifiers();
-        if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
-            if (in_array($property->getName(), ['name', 'class'], false)) {
-                throw new Exception("Impossible to make accessible private property with name 'class' or 'name'");
-            }
-            $property->setAccessible(true);
-        }
-        if ($modifiers & \ReflectionProperty::IS_STATIC) {
-            $property->setValue($value);
+        /**
+         * SET VALUE
+         */
+        $setter = 'set' . ucfirst($propName);
+        if (method_exists($this, $setter)) {
+            $this->$setter($value);
         } else {
-            $property->setValue($obj, $value);
+            $modifiers = $property->getModifiers();
+            if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
+                if (in_array($property->getName(), ['name', 'class'], false)) {
+                    throw new Exception("Impossible to make accessible private property with name 'class' or 'name'");
+                }
+                $property->setAccessible(true);
+            }
+            if ($modifiers & \ReflectionProperty::IS_STATIC) {
+                $property->setValue($value);
+            } else {
+                $property->setValue($obj, $value);
+            }
+            if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
+                $property->setAccessible(false);
+            }
         }
-        if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
-            $property->setAccessible(false);
-        }
+
         if ($obj instanceof BaseObject) {
             if (null !== $mappedFrom) {
                 $obj->setMap($propName, $mappedFrom);
@@ -626,6 +669,14 @@ class ObjectFetcherService
         }
 
         return $newType;
+    }
+
+    /**
+     * @return ObjectFetcherService
+     */
+    public static function getInstance(): ObjectFetcherService
+    {
+        return self::$instance;
     }
 
 }

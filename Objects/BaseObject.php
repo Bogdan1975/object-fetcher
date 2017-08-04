@@ -125,10 +125,32 @@ class BaseObject
             }
 
             $info = isset($this->metaInfo[$propName], $this->metaInfo[$propName]['info']) ? $this->metaInfo[$propName]['info'] : null;
-            if (count(array_intersect($info['profiles'], $profiles)) === 0) {
+            if (null === $info || count(array_intersect($info['profiles'], $profiles)) === 0) {
                 continue;
             }
-            $currentValue = $property->getValue($this);
+
+            /**
+             * GET VALUE
+             */
+            $getter = 'get' . ucfirst($propName);
+            if (method_exists($this, $getter)) {
+                $currentValue = $this->$getter();
+            } else {
+                $modifiers = $property->getModifiers();
+                if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
+                    if (in_array($propName, ['name', 'class'], false)) {
+                        throw new \Exception(
+                            "Impossible to make accessible private property with name 'class' or 'name'"
+                        );
+                    }
+                    $property->setAccessible(true);
+                }
+                $currentValue = $property->getValue($this);
+                if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
+                    $property->setAccessible(false);
+                }
+            }
+
             $map = isset($this->metaInfo[$propName], $this->metaInfo[$propName]['map']) ? $this->metaInfo[$propName]['map'] : null;
             $needToExtract = true;
             if (self::FILTER_DIRTY_ONLY === $filter && isset($this->metaInfo[$propName]) && array_key_exists('initValue',$this->metaInfo[$propName])) {
@@ -183,7 +205,17 @@ class BaseObject
 
     public static function createInstance()
     {
-        return ObjectFetcherService::createObject(self::class);
+        return ObjectFetcherService::createObject(static::class);
+    }
+
+    /**
+     * @return $this
+     */
+    public function collectMetaData()
+    {
+        ObjectFetcherService::collectMetaData($this);
+
+        return $this;
     }
 
 }
