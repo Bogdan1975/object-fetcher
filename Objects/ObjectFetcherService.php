@@ -70,6 +70,21 @@ class ObjectFetcherService
      */
     private static $defaults;
 
+    /**
+     * @var bool
+     */
+    private $ignoreMandatory = false;
+
+    /**
+     * @var bool
+     */
+    private $ignoreNotNullable = false;
+
+    /**
+     * @var bool
+     */
+    private $rawMode = false;
+
     public function __construct(Reader $annotationReader, $config)
     {
         self::$annotationReader = $annotationReader;
@@ -109,6 +124,44 @@ class ObjectFetcherService
                 self::TYPE_DATE => 'Date',
                 self::TYPE_RAW => 'any',
         ];
+    }
+
+    /**
+     * @param bool $ignoreMandatory
+     *
+     * @return $this
+     */
+    public function setIgnoreMandatory(bool $ignoreMandatory)
+    {
+        $this->ignoreMandatory = $ignoreMandatory;
+
+        return $this;
+    }
+
+    /**
+     * @param bool $ignoreNotNullable
+     *
+     * @return $this
+     */
+    public function setIgnoreNotNullable(bool $ignoreNotNullable)
+    {
+        $this->ignoreNotNullable = $ignoreNotNullable;
+
+        return $this;
+    }
+
+    /**
+     * @param bool $rawMode
+     *
+     * @return $this
+     */
+    public function setRawMode(bool $rawMode)
+    {
+        $this->ignoreNotNullable = $rawMode;
+        $this->ignoreMandatory = $rawMode;
+        $this->rawMode = $rawMode;
+
+        return $this;
     }
 
     public static function createObject(string $className)
@@ -272,13 +325,13 @@ class ObjectFetcherService
             $value = $tmp['value'];
             $mappedFrom = $tmp['mappedFrom'];
         } catch (MissingMandatoryField $e) {
-            if ($info['required']) {
+            if (!$this->ignoreMandatory && $info['required']) {
                 throw new MissingMandatoryField("Field '$propName' is mandatory");
             }
             $value = $info['default'] ?? $property->getValue($obj);
             $mappedFrom = null;
         }
-        if (null === $value && !$info['nullable']) {
+        if (null === $value && !$this->ignoreNotNullable && !$info['nullable']) {
             throw new MissingMandatoryField("Field '$propName' is not nullable. Class '$className'");
         }
 
@@ -291,7 +344,7 @@ class ObjectFetcherService
         }
 
         // Validate enum values
-        if (null != $value && !empty($info['enum']) && !in_array($value, $info['enum'], true)) {
+        if (!$this->rawMode && null != $value && !empty($info['enum']) && !in_array($value, $info['enum'], true)) {
             $enumValues = "'" . implode("', '", $info['enum']) . "'";
             throw new ValidationError("Value '{$value}' is out of enum range. Only $enumValues values allowed");
         }
