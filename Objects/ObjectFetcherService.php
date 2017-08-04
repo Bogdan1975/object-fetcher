@@ -244,11 +244,16 @@ class ObjectFetcherService
             $profiles[] = self::$defaults['profile'];
         }
 
-        /** @var BaseObject $obj */
-        $obj = self::createObject($className);
-
         $reflection = new \ReflectionClass($className);
         $properties = $reflection->getProperties();
+
+        /** @var BaseObject $obj */
+        if ($reflection->implementsInterface( ClassDefinderInterface::class)) {
+            $className = $className::getClassByData($data);
+            $reflection = new \ReflectionClass($className);
+            $properties = $reflection->getProperties();
+        }
+        $obj = self::createObject($className);
 
         foreach ($properties as $property) {
             $info = $obj->getInfo($property->getName());
