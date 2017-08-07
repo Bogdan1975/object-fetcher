@@ -579,7 +579,11 @@ class ObjectFetcherService
                 if (!class_exists($type)) {
                     throw new TypeConversionException("Unknown type '$type'");
                 }
-                $newValue = $this->fetch($type, $value, $profiles, $includeDefaultProfile);
+                if ($type !== get_class($value)) {
+                    $newValue = $this->fetch($type, $value, $profiles, $includeDefaultProfile);
+                } else {
+                    $newValue = $value;
+                }
                 break;
         }
 
