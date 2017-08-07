@@ -9,6 +9,8 @@
 namespace Targus\ObjectFetcher\Objects;
 
 
+use Doctrine\ORM\PersistentCollection;
+
 class BaseObject
 {
 
@@ -113,15 +115,14 @@ class BaseObject
         }
         $data = [];
         $reflection = new \ReflectionClass(static::class);
+        if ($reflection->implementsInterface(\Doctrine\ORM\Proxy\Proxy::class)) {
+            $reflection = $reflection->getParentClass();
+        }
         $properties = $reflection->getProperties();
         foreach ($properties as $property) {
             $propName = $property->getName();
             if (in_array($propName, self::DISALLOWED_PROPERTIES, false)) {
                 continue;
-            }
-            if (!property_exists($this, $propName)) {
-                // @ToDo: Make exceprion. Targus. 17.07.2017
-                throw new \Exception();
             }
 
             $info = isset($this->metaInfo[$propName], $this->metaInfo[$propName]['info']) ? $this->metaInfo[$propName]['info'] : null;
@@ -136,6 +137,13 @@ class BaseObject
             if (method_exists($this, $getter)) {
                 $currentValue = $this->$getter();
             } else {
+
+                // @ToDo: Розібратися, може воно зайве та викосити. Targus. 04.08.2017
+                if (!property_exists($this, $propName)) {
+                    // @ToDo: Make exceprion. Targus. 17.07.2017
+                    throw new \Exception();
+                }
+
                 $modifiers = $property->getModifiers();
                 if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
                     if (in_array($propName, ['name', 'class'], false)) {
@@ -183,18 +191,20 @@ class BaseObject
 
     private function convertValue($value, string $properyNames, array $info = null, string $filter, $profiles = [], $includeDefaultProfile = true) {
         $result = $value;
-        if (is_array($value)) {
+        $processed = false;
+        if (is_array($value) || (is_object($value) && $value instanceof \IteratorAggregate)) {
             $result = [];
             foreach ($value as $item) {
                 $result[] = $this->convertValue($item, $properyNames, $info, $filter, $profiles, $includeDefaultProfile);
             }
+            $processed = true;
         }
-        if (is_object($value)) {
+        if (is_object($value) && !$processed) {
             if ($value instanceof BaseObject) {
                 $result = $value->convertToArray($properyNames, $filter, $profiles, $includeDefaultProfile);
             } elseif ($value instanceof \DateTime) {
-                $outputDateTimeFormat = isset($info, $info['outputDateTimeFormat']) ? $info['outputDateTimeFormat'] :
-                $result = $value->format($info['outputDateTimeFormat']);
+                $outputDateTimeFormat = isset($info, $info['outputDateTimeFormat']) ? $info['outputDateTimeFormat'] : $this->defaults['dateTimeFormat'];
+                $result = $value->format($outputDateTimeFormat);
             } else {
                 $result = (array)$value;
             }

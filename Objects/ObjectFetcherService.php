@@ -194,8 +194,12 @@ class ObjectFetcherService
 
     public static function collectMetaData($obj)
     {
-        $className = get_class($obj);
-        $reflection = new \ReflectionClass($className);
+        $reflection = new \ReflectionClass($obj);
+        // @ToDo: Винести на зовні, щоб не було залежності від Doctrine. Targus. 07.08.2017
+        if ($reflection->implementsInterface(\Doctrine\ORM\Proxy\Proxy::class)) {
+            $reflection = $reflection->getParentClass();
+        }
+        $className = $reflection->getName();
         $properties = $reflection->getProperties();
 
         /** @var Defaults $classDefaults */
