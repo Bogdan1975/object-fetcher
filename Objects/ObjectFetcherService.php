@@ -179,7 +179,6 @@ class ObjectFetcherService
                 $parentProperty = $parentReflection->getProperty($property->getName());
                 $parentFieldInfoAnnot = self::getPropertyAnnotation($parentReflection, $parentProperty);
                 if (!empty($parentFieldInfoAnnot)) {
-                    $fieldInfoAnnot = $fieldInfoAnnot ? array_merge($parentFieldInfoAnnot, $fieldInfoAnnot) : $parentFieldInfoAnnot;
                     if (null === $fieldInfoAnnot) {
                         $fieldInfoAnnot = $parentFieldInfoAnnot;
                     } else {
@@ -574,7 +573,7 @@ class ObjectFetcherService
         $created[] = $interfaceName;
 
         $fetchText = 'export function fetchDataTo' . $interfaceName . "(data): $interfaceName {" . PHP_EOL;
-        $fetchText .= "    let obj: $interfaceName = {};" . PHP_EOL;
+        $fetchText .= "    let obj: $interfaceName|any = {};" . PHP_EOL;
         $classText = "export class $className_ implements $interfaceName {" . PHP_EOL;
         $text = 'export interface ' . $interfaceName . ' {' . PHP_EOL;
 
@@ -613,6 +612,8 @@ class ObjectFetcherService
                     }
                     $newType = $itemInterfaceName;
                     $fetchVal = 'new ' . $itemClassName . "(%s)";
+                } elseif ($newType === 'Date') {
+                    $fetchVal = 'new Date(%s)';
                 } else {
                     $fetchVal = "data.{$propertyName}";
                 }
