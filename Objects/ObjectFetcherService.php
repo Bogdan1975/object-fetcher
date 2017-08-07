@@ -238,7 +238,7 @@ class ObjectFetcherService
         return $obj;
     }
 
-    public function fetch(string $className, array $data, $profiles = [], $includeDefaultProfile = true)
+    public function fetch(string $className, $data, $profiles = [], $includeDefaultProfile = true)
     {
         if (!is_array($profiles)) {
             $profiles = (array)$profiles;
@@ -363,14 +363,17 @@ class ObjectFetcherService
         $className = get_class($obj);
         $dataPropName =  $info['sourceName'] ?? $propName;
         try {
-            $tmp = $this->getValueFromData($data, $dataPropName);
+            $tmp = self::getValueFromData($data, $dataPropName);
             $value = $tmp['value'];
             $mappedFrom = $tmp['mappedFrom'];
         } catch (MissingMandatoryField $e) {
             if (!$this->ignoreMandatory && $info['required']) {
                 throw new MissingMandatoryField("Field '$propName' is mandatory");
             }
-            $value = $info['default'] ?? $property->getValue($obj);
+
+            // GET VALUE
+            $currentValue = self::getValueFromObject($obj, $propName);
+            $value = $info['default'] ?? $currentValue;
             $mappedFrom = null;
         }
         if (null === $value && !$this->ignoreNotNullable && !$info['nullable']) {
@@ -452,7 +455,7 @@ class ObjectFetcherService
      *
      * @return string
      */
-    private function camelToSnake(string $str)
+    private static function camelToSnake(string $str)
     {
         if (!is_string($str)) {
             return $str;
@@ -471,6 +474,39 @@ class ObjectFetcherService
         return $newStr;
     }
 
+    public static function getValueFromObject($obj, $propName)
+    {
+        $getter = 'get' . ucfirst($propName);
+        if (method_exists($obj, $getter)) {
+            $currentValue = $obj->$getter();
+        } else {
+
+            // @ToDo: Розібратися, може воно зайве та викосити. Targus. 04.08.2017
+            if (!property_exists($obj, $propName)) {
+                // @ToDo: Make exceprion. Targus. 17.07.2017
+                throw new \Exception();
+            }
+
+            $property = new \ReflectionProperty(get_class($obj), $propName);
+
+            $modifiers = $property->getModifiers();
+            if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
+                if (in_array($propName, ['name', 'class'], false)) {
+                    throw new \Exception(
+                        "Impossible to make accessible private property with name 'class' or 'name'"
+                    );
+                }
+                $property->setAccessible(true);
+            }
+            $currentValue = $property->getValue($obj);
+            if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
+                $property->setAccessible(false);
+            }
+        }
+
+        return $currentValue;
+    }
+
     /**
      * @param mixed $data
      * @param string $name
@@ -478,20 +514,29 @@ class ObjectFetcherService
      * @return mixed
      *
      * @throws MissingMandatoryField
+     * @throws \Exception
      */
-    private function getValueFromData($data, string $name)
+    public static function getValueFromData($data, string $name)
     {
         $mappedFrom = $name;
-        if (!array_key_exists($name, $data)) {
-            $mappedFrom = $this->camelToSnake($name);
-            if (!array_key_exists($mappedFrom, $data)) {
-                throw new MissingMandatoryField('');
+        if (is_array($data)) {
+            if (!array_key_exists($name, $data)) {
+                $mappedFrom = self::camelToSnake($name);
+                if (!array_key_exists($mappedFrom, $data)) {
+                    throw new MissingMandatoryField('');
+                }
             }
+            $value = $data[$mappedFrom];
+        } elseif (is_object($data)) {
+            $value = self::getValueFromObject($data, $mappedFrom);
+        } else {
+            $type = gettype($data);
+            throw new \Exception("Unresolved type of data. Object or array expect, '$type' given");
         }
 
         return [
             'mappedFrom' => $mappedFrom,
-            'value' => $data[$mappedFrom],
+            'value' => $value,
         ];
     }
 

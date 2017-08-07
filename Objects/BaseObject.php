@@ -130,34 +130,7 @@ class BaseObject
                 continue;
             }
 
-            /**
-             * GET VALUE
-             */
-            $getter = 'get' . ucfirst($propName);
-            if (method_exists($this, $getter)) {
-                $currentValue = $this->$getter();
-            } else {
-
-                // @ToDo: Розібратися, може воно зайве та викосити. Targus. 04.08.2017
-                if (!property_exists($this, $propName)) {
-                    // @ToDo: Make exceprion. Targus. 17.07.2017
-                    throw new \Exception();
-                }
-
-                $modifiers = $property->getModifiers();
-                if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
-                    if (in_array($propName, ['name', 'class'], false)) {
-                        throw new \Exception(
-                            "Impossible to make accessible private property with name 'class' or 'name'"
-                        );
-                    }
-                    $property->setAccessible(true);
-                }
-                $currentValue = $property->getValue($this);
-                if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
-                    $property->setAccessible(false);
-                }
-            }
+            $currentValue = ObjectFetcherService::getValueFromObject($this, $propName);
 
             $map = isset($this->metaInfo[$propName], $this->metaInfo[$propName]['map']) ? $this->metaInfo[$propName]['map'] : null;
             $needToExtract = true;
@@ -213,6 +186,9 @@ class BaseObject
         return $result;
     }
 
+    /**
+     * @return BaseObject
+     */
     public static function createInstance()
     {
         return ObjectFetcherService::createObject(static::class);
