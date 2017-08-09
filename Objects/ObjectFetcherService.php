@@ -191,9 +191,8 @@ class ObjectFetcherService
         return $fieldInfoAnnot;
     }
 
-    public static function collectMetaData($obj)
+    public static function collectMetaDataForReflection(\ReflectionClass $reflection)
     {
-        $reflection = new \ReflectionClass($obj);
         // @ToDo: Винести на зовні, щоб не було залежності від Doctrine. Targus. 07.08.2017
         if ($reflection->implementsInterface(\Doctrine\ORM\Proxy\Proxy::class)) {
             $reflection = $reflection->getParentClass();
@@ -209,10 +208,8 @@ class ObjectFetcherService
             'dateTimeFormat' => $classDefaults && null !== $classDefaults->dateTimeFormat ? $classDefaults->dateTimeFormat : self::$defaults['dateTimeFormat'],
             'nullable' => $classDefaults && null !== $classDefaults->nullable ? $classDefaults->nullable : self::$defaults['nullable'],
         ];
-        if ($obj instanceof BaseObject) {
-            $obj->setDefaults($defaults);
-        }
 
+        $infoArray = [];
         foreach ($properties as $property) {
             /** @var Field|null $fieldInfoAnnot */
             $fieldInfoAnnot = self::getPropertyAnnotation($reflection, $property);
@@ -222,6 +219,37 @@ class ObjectFetcherService
                 $info = static::getInfoByFieldAnnot($fieldInfoAnnot, $defaults, $types);
             }
 
+            if (!empty($info)) {
+                $infoArray[$property->getName()] = $info;
+            }
+        }
+
+        return [
+            'defaults' => $defaults,
+            'info' => $infoArray,
+        ];
+    }
+
+    public static function collectMetaData($obj)
+    {
+        $reflection = new \ReflectionClass($obj);
+        // @ToDo: Винести на зовні, щоб не було залежності від Doctrine. Targus. 07.08.2017
+        if ($reflection->implementsInterface(\Doctrine\ORM\Proxy\Proxy::class)) {
+            $reflection = $reflection->getParentClass();
+        }
+
+        $data = self::collectMetaDataForReflection($reflection);
+        $defaults = $data['defaults'];
+        $infoArray = $data['info'];
+
+        $properties = $reflection->getProperties();
+
+        if ($obj instanceof BaseObject) {
+            $obj->setDefaults($defaults);
+        }
+
+        foreach ($properties as $property) {
+            $info = $infoArray[$property->getName()] ?? null;
             if (!empty($info)) {
                 if ($obj instanceof BaseObject) {
                     $obj->setInfo($property->getName(), $info);
@@ -373,6 +401,12 @@ class ObjectFetcherService
 
             // GET VALUE
             $currentValue = self::getValueFromObject($obj, $propName);
+            if (!$info['default']) {
+                if ($obj instanceof BaseObject) {
+                    $obj->setInitValue($propName, $currentValue);
+                }
+                return;
+            }
             $value = $info['default'] ?? $currentValue;
             $mappedFrom = null;
         }
@@ -408,8 +442,8 @@ class ObjectFetcherService
          * SET VALUE
          */
         $setter = 'set' . ucfirst($propName);
-        if (method_exists($this, $setter)) {
-            $this->$setter($value);
+        if (method_exists($obj, $setter)) {
+            $obj->$setter($value);
         } else {
             $modifiers = $property->getModifiers();
             if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
@@ -626,16 +660,18 @@ class ObjectFetcherService
         $classText = "export class $className_ implements $interfaceName {" . PHP_EOL;
         $text = 'export interface ' . $interfaceName . ' {' . PHP_EOL;
 
-        /** @var BaseObject $obj */
-        $obj = self::createObject($className);
-        $depenndencies = '';
-
         $reflection = new \ReflectionClass($className);
         $properties = $reflection->getProperties();
 
+        /** @var BaseObject $obj */
+//        $obj = self::createObject($className);
+        $infoArray = self::collectMetaDataForReflection($reflection)['info'];
+        $depenndencies = '';
+
         foreach ($properties as $property) {
             $propertyName = $property->getName();
-            $info = $obj->getInfo($propertyName);
+//            $info = $obj->getInfo($propertyName);
+            $info = $infoArray[$propertyName] ?? null;
             if (!empty($info)) {
                 $text .= '    ' . $propertyName;
                 $classText .= '    public ' . $propertyName . ': ';
@@ -644,9 +680,9 @@ class ObjectFetcherService
                 } else {
                     $fetchText .= "    if (!data.hasOwnProperty('{$propertyName}')) throw new Error('Property \"{$propertyName}\" is required');" . PHP_EOL;
                 }
-                if (!$info['nullable']) {
-                    $fetchText .= "    if (!data.hasOwnProperty('{$propertyName}')) throw new Error('Property \"{$propertyName}\" is required');" . PHP_EOL;
-                }
+//                if (!$info['nullable']) {
+//                    $fetchText .= "    if (!data.hasOwnProperty('{$propertyName}')) throw new Error('Property \"{$propertyName}\" is required');" . PHP_EOL;
+//                }
                 $text .= ': ';
                 $newType = self::convertTypeToTypescript($info['type']);
                 $itemClassName = $newType;
@@ -671,7 +707,7 @@ class ObjectFetcherService
                 if ($info['isArray']) {
                     $text .= '[]';
                     $classText .= '[]';
-                    $fetchText .= "    if (typeof(data.{$propertyName}) !== 'object && !Array.isArray(data.{$propertyName})) throw new Error('Property \"$propertyName\" must be an array');" . PHP_EOL;
+                    $fetchText .= "    if (typeof(data.{$propertyName}) !== 'object' && !Array.isArray(data.{$propertyName})) throw new Error('Property \"$propertyName\" must be an array');" . PHP_EOL;
                     $fetchVal = "data.{$propertyName}.map(item => " . sprintf($fetchVal, 'item') . ')';
                 } else {
                     $fetchVal = sprintf($fetchVal, "data.{$propertyName}");

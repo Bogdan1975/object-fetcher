@@ -47,7 +47,7 @@ class Field extends FetcherAnnotation
     /**
      * @var bool
      */
-    public $required = false;
+    public $required;
 
     /**
      * @var bool
