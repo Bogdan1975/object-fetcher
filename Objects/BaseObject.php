@@ -110,6 +110,7 @@ class BaseObject
         if (!is_array($profiles)) {
             $profiles = (array)$profiles;
         }
+        $this->collectMetaData();
         if ($includeDefaultProfile && !in_array($this->defaults['profile'], $profiles, false)) {
             $profiles[] = $this->defaults['profile'];
         }
