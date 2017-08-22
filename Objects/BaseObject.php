@@ -168,8 +168,17 @@ class BaseObject
         $processed = false;
         if (is_array($value) || (is_object($value) && $value instanceof \IteratorAggregate)) {
             $result = [];
-            foreach ($value as $item) {
-                $result[] = $this->convertValue($item, $properyNames, $info, $filter, $profiles, $includeDefaultProfile);
+            foreach ($value as $key => $item) {
+                $idx = $info['isArray']->preserveKeys && (!$info['isArray']->preserveOnlyStringKeys || is_string($key)) ? $key : count($result);
+                $result[$idx] = $this->convertValue(
+                    $item,
+                    $properyNames,
+                    $info,
+                    $filter,
+                    $profiles,
+                    $includeDefaultProfile
+                );
+
             }
             $processed = true;
         }
@@ -188,7 +197,7 @@ class BaseObject
     }
 
     /**
-     * @return BaseObject
+     * @return $this
      */
     public static function createInstance()
     {
