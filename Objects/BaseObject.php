@@ -199,9 +199,11 @@ class BaseObject
     /**
      * @return $this
      */
-    public static function createInstance()
+    public static function createInstance($data = null)
     {
-        return ObjectFetcherService::createObject(static::class);
+        $fetcher = ObjectFetcherService::getInstance();
+        $obj = empty($data) ? ObjectFetcherService::createObject(static::class) : $fetcher->fetch(static::class, $data);
+        return $obj;
     }
 
     /**
