@@ -70,6 +70,11 @@ class Field extends FetcherAnnotation
     public $profiles;
 
     /**
+     * @var array<string>
+     */
+    public $exclude;
+
+    /**
      * @var string
      */
     public $inputDateTimeFormat;
@@ -95,6 +100,7 @@ class Field extends FetcherAnnotation
         $this->default = $this->default ?? $obj->default;
         $this->enum = $this->enum ?? $obj->enum;
         $this->profiles = $this->profiles ?? $obj->profiles;
+        $this->exclude = $this->exclude ?? $obj->exclude;
         $this->inputDateTimeFormat = $this->inputDateTimeFormat ?? $obj->inputDateTimeFormat;
         $this->outputDateTimeFormat = $this->outputDateTimeFormat ?? $obj->outputDateTimeFormat;
     }

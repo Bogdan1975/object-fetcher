@@ -56,10 +56,12 @@ class BaseObject
 
     public function setInitValue(string $fieldName, $value)
     {
-        if (!array_key_exists($fieldName, $this->metaInfo)) {
-            $this->metaInfo[$fieldName] = [];
+        if (!in_array($fieldName, self::DISALLOWED_PROPERTIES, false)) {
+            if (!array_key_exists($fieldName, $this->metaInfo)) {
+                $this->metaInfo[$fieldName] = [];
+            }
+            $this->metaInfo[$fieldName]['initValue'] = $value;
         }
-        $this->metaInfo[$fieldName]['initValue'] = $value;
 
         return $this;
     }
@@ -128,6 +130,10 @@ class BaseObject
 
             $info = isset($this->metaInfo[$propName], $this->metaInfo[$propName]['info']) ? $this->metaInfo[$propName]['info'] : null;
             if (null === $info || count(array_intersect($info['profiles'], $profiles)) === 0) {
+                continue;
+            }
+
+            if (count(array_intersect($info['exclude'], $profiles)) > 0) {
                 continue;
             }
 

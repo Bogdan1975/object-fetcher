@@ -250,10 +250,16 @@ class ObjectFetcherService
 
         foreach ($properties as $property) {
             $info = $infoArray[$property->getName()] ?? null;
+            $propName = $property->getName();
             if (!empty($info)) {
                 if ($obj instanceof BaseObject) {
-                    $obj->setInfo($property->getName(), $info);
+                    $obj->setInfo($propName, $info);
                 }
+            }
+            if ($obj instanceof BaseObject) {
+                $currentValue = self::getValueFromObject($obj, $propName);
+                $value = $info['default'] ?? $currentValue;
+                $obj->setInitValue($propName, $value);
             }
         }
     }
@@ -365,6 +371,7 @@ class ObjectFetcherService
 
         // Define 'profiles' attribute
         $info['profiles'] = empty($annot->profiles) ? [$defaults['profile']] : $annot->profiles;
+        $info['exclude'] = isset($annot->exclude) ? ((is_array($annot->exclude) && count($annot->exclude) === 0) ? [$defaults['profile']] : $annot->exclude) : [];
 
         // Define 'default' attribute
         $info['default'] = $annot->default;
