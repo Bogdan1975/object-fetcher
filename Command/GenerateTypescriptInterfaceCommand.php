@@ -17,7 +17,7 @@ class GenerateTypescriptInterfaceCommand extends ContainerAwareCommand
             ->setName('generate:typescript:interface')
             ->setDescription('...')
             ->addArgument('argument', InputArgument::REQUIRED, 'Argument description')
-            ->addOption('option', null, InputOption::VALUE_NONE, 'Option description')
+            ->addOption('to', null, InputOption::VALUE_OPTIONAL, 'Option description')
         ;
     }
 
@@ -25,12 +25,18 @@ class GenerateTypescriptInterfaceCommand extends ContainerAwareCommand
     {
         $argument = $input->getArgument('argument');
 
-        if ($input->getOption('option')) {
+//        if ($input->getOption('option')) {
             // ...
-        }
+//        }
 
         $fetcher =  $this->getContainer()->get('targus.object_fetcher.service');
-        $text = $fetcher->createInterface($argument)['text'];
+        switch (strtolower($input->getOption('to'))) {
+            case 'js':
+                $text = $fetcher->createJsClass($argument)['text'];
+                break;
+            default:
+                $text = $fetcher->createInterface($argument)['text'];
+        }
 
         $output->writeln($text);
     }

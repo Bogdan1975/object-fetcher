@@ -759,6 +759,8 @@ class ObjectFetcherService
         return $result;
     }
 
+
+
     private static function convertTypeToTypescript(string $type)
     {
         if (!in_array($type, self::TYPES, false) && !class_exists($type)) {
@@ -771,6 +773,82 @@ class ObjectFetcherService
         }
 
         return $newType;
+    }
+
+    public function createJsClass(string $className, array $created = [])
+    {
+        $tmp = explode('\\', $className);
+        $className_ = ucfirst(array_pop($tmp));
+        $created[] = $className_;
+
+        $classText = "function $className_(data)) {" . PHP_EOL;
+        $classText .= '    this.data_ = data;' . PHP_EOL;
+        $classText .= '    for(prop in data) {' . PHP_EOL;
+
+        $reflection = new \ReflectionClass($className);
+        $properties = $reflection->getProperties();
+
+        /** @var BaseObject $obj */
+//        $obj = self::createObject($className);
+        $infoArray = self::collectMetaDataForReflection($reflection)['info'];
+        $depenndencies = '';
+
+        $prototypeText = '';
+
+        foreach ($properties as $property) {
+            $propertyName = $property->getName();
+//            $info = $obj->getInfo($propertyName);
+            $info = $infoArray[$propertyName] ?? null;
+            if (!empty($info)) {
+
+                $newType = self::convertTypeToTypescript($info['type']);
+                $itemClassName = $newType;
+                if ($newType === 'object') {
+                    $tmp = explode('\\', $info['type']);
+                    $itemClassName = ucfirst(array_pop($tmp));
+                    if (!in_array($itemClassName, $created)) {
+                        $dep = $this->createJsClass($info['type'], $created);
+                        $depenndencies .= $dep['text'] . PHP_EOL . PHP_EOL;
+                        $created = array_merge($created, $dep['created']);
+                    }
+                    $newType = $itemClassName;
+                    $fetchVal = 'new ' . $itemClassName . "(%s)";
+                } elseif ($newType === 'Date') {
+                    $fetchVal = 'new Date(%s)';
+                } else {
+                    $fetchVal = "data.{$propertyName}";
+                }
+                if ($info['isArray']) {
+                    $classText .= "        if (null != data.{$propertyName} && typeof(data.{$propertyName}) !== 'object' && !Array.isArray(data.{$propertyName})) throw new Error('Property \"$propertyName\" must be an array');" . PHP_EOL;
+                    $fetchVal = "data.{$propertyName}.map(item => " . sprintf($fetchVal, 'item') . ')';
+                } else {
+                    $fetchVal = sprintf($fetchVal, "data.{$propertyName}");
+                }
+                $indent = '';
+                    $classText .= "        if (data.hasOwnProperty('{$propertyName}') && this.hasOwnProperty('{$propertyName}')) {" . PHP_EOL;
+                    $indent = '    ';
+
+                    if ($fetchVal === "data.{$propertyName}") {
+                        $classText .= $indent . "        this.{$propertyName} = data.{$propertyName};" . PHP_EOL;
+                    } else {
+                        $classText .= $indent . "        this.{$propertyName} = data.{$propertyName} ? {$fetchVal} : null;" . PHP_EOL;
+                    }
+                $classText .= '        }' . PHP_EOL;
+
+                $prototypeText .= $className_ . '.prototype.' . $propertyName . ' = null' . PHP_EOL;
+            }
+        }
+
+        $classText .= '    }' . PHP_EOL;
+        $classText .= '}' . PHP_EOL;
+
+
+        $result = [
+            'text' => $depenndencies . $classText . PHP_EOL . $prototypeText . PHP_EOL . PHP_EOL,
+            'created' => $created,
+        ];
+
+        return $result;
     }
 
     /**
