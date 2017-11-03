@@ -222,4 +222,10 @@ class BaseObject
         return $this;
     }
 
+    public function fecth($data, $profiles = [], $includeDefaultProfile = true)
+    {
+        $fetcher = ObjectFetcherService::getInstance();
+        $fetcher->fetch($this, $data, $profiles, $includeDefaultProfile);
+    }
+
 }

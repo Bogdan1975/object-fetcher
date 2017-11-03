@@ -272,7 +272,17 @@ class ObjectFetcherService
         return $obj;
     }
 
-    public function fetch(string $className, $data, $profiles = [], $includeDefaultProfile = true)
+    /**
+     * @param string|mixed $className
+     * @param $data
+     * @param array $profiles
+     * @param bool $includeDefaultProfile
+     *
+     * @return BaseObject
+     *
+     * @throws \Exception
+     */
+    public function fetch($className, $data, $profiles = [], $includeDefaultProfile = true)
     {
         if (!is_array($profiles)) {
             $profiles = (array)$profiles;
@@ -281,6 +291,13 @@ class ObjectFetcherService
             $profiles[] = self::$defaults['profile'];
         }
 
+        if (is_object($className)) {
+            $obj = $className;
+            self::collectMetaData($obj);
+            $className = get_class($obj);
+        } elseif (!is_string($className)) {
+            throw new Exception('ObjectFetcherService::fetch. First parameter should be a string or an object');
+        }
         $reflection = new \ReflectionClass($className);
         $properties = $reflection->getProperties();
 
@@ -290,7 +307,9 @@ class ObjectFetcherService
             $reflection = new \ReflectionClass($className);
             $properties = $reflection->getProperties();
         }
-        $obj = self::createObject($className);
+        if (!isset($obj)) {
+            $obj = self::createObject($className);
+        }
 
         foreach ($properties as $property) {
             $info = $obj->getInfo($property->getName());
