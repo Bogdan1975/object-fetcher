@@ -537,8 +537,11 @@ class ObjectFetcherService
     public static function getValueFromObject($obj, $propName)
     {
         $getter = 'get' . ucfirst($propName);
+        $getter2 = 'is' . ucfirst($propName);
         if (method_exists($obj, $getter)) {
             $currentValue = $obj->$getter();
+        } elseif (method_exists($obj, $getter2)) {
+            $currentValue = $obj->$getter2();
         } else {
 
             // @ToDo: Розібратися, може воно зайве та викосити. Targus. 04.08.2017

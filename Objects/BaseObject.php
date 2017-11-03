@@ -10,6 +10,7 @@ namespace Targus\ObjectFetcher\Objects;
 
 
 use Doctrine\ORM\PersistentCollection;
+use Targus\ObjectFetcher\Exceptions\Exception;
 
 class BaseObject
 {
@@ -203,12 +204,16 @@ class BaseObject
     }
 
     /**
+     * @param null $data
+     * @param array $profiles
+     * @param bool $includeDefaultProfile
+     *
      * @return $this
      */
-    public static function createInstance($data = null)
+    public static function createInstance($data = null, array $profiles = [], $includeDefaultProfile = true)
     {
         $fetcher = ObjectFetcherService::getInstance();
-        $obj = empty($data) ? ObjectFetcherService::createObject(static::class) : $fetcher->fetch(static::class, $data);
+        $obj = empty($data) ? ObjectFetcherService::createObject(static::class) : $fetcher->fetch(static::class, $data, $profiles, $includeDefaultProfile);
         return $obj;
     }
 
@@ -222,7 +227,15 @@ class BaseObject
         return $this;
     }
 
-    public function fecth($data, $profiles = [], $includeDefaultProfile = true)
+    /**
+     * @param $data
+     * @param array $profiles
+     * @param bool $includeDefaultProfile
+     *
+     * @throws \Exception
+     * @throws Exception
+     */
+    public function fetch($data, array $profiles = [], $includeDefaultProfile = true)
     {
         $fetcher = ObjectFetcherService::getInstance();
         $fetcher->fetch($this, $data, $profiles, $includeDefaultProfile);
