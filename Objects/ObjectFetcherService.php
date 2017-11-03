@@ -281,6 +281,7 @@ class ObjectFetcherService
      * @return BaseObject
      *
      * @throws \Exception
+     * @throws Exception
      */
     public function fetch($className, $data, $profiles = [], $includeDefaultProfile = true)
     {
@@ -314,8 +315,20 @@ class ObjectFetcherService
         foreach ($properties as $property) {
             $info = $obj->getInfo($property->getName());
             if (!empty($info)) {
+                $excludedArray = array_intersect($info['exclude'], $profiles);
+                $notExcludedArray = array_diff($profiles, $info['exclude']);
                 if (count(array_intersect($info['profiles'], $profiles))) {
-                    $this->hydrateProperty($obj, $data, $info, $property, $profiles, $includeDefaultProfile);
+                    if (count($excludedArray) > 0 && count($notExcludedArray) > 0) {
+                        $errorText = "Property '{$property->getName()}' excluded not for all specified profiles. \n";
+                        $excluded = '"' . implode('", "', $excludedArray) . '"';
+                        $notExcluded = '"' . implode('", "', $notExcludedArray) . '"';
+                        $errorText .= "Profiles, that marked as excluded: $excluded \n";
+                        $errorText .= "Profiles, that not marked as excluded: $notExcluded \n";
+                        throw new Exception($errorText);
+                    }
+                    if (count($excludedArray) === 0) {
+                        $this->hydrateProperty($obj, $data, $info, $property, $profiles, $includeDefaultProfile);
+                    }
                 }
             }
         }
