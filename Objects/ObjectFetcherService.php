@@ -318,14 +318,16 @@ class ObjectFetcherService
                 $excludedArray = array_intersect($info['exclude'], $profiles);
                 $notExcludedArray = array_diff($profiles, $info['exclude']);
                 if (count(array_intersect($info['profiles'], $profiles))) {
-                    if (count($excludedArray) > 0 && count($notExcludedArray) > 0) {
-                        $errorText = "Property '{$property->getName()}' excluded not for all specified profiles. \n";
-                        $excluded = '"' . implode('", "', $excludedArray) . '"';
-                        $notExcluded = '"' . implode('", "', $notExcludedArray) . '"';
-                        $errorText .= "Profiles, that marked as excluded: $excluded \n";
-                        $errorText .= "Profiles, that not marked as excluded: $notExcluded \n";
-                        throw new Exception($errorText);
-                    }
+                    // Спірний функціонал викидання ексепшенів, якщо exclude встановлений не для всіх переданих профілів.
+                    // Неоднозначність з дефолтним профілем. Тому покищо вимикаємо
+//                    if (count($excludedArray) > 0 && count($notExcludedArray) > 0) {
+//                        $errorText = "Property '{$property->getName()}' excluded not for all specified profiles. \n";
+//                        $excluded = '"' . implode('", "', $excludedArray) . '"';
+//                        $notExcluded = '"' . implode('", "', $notExcludedArray) . '"';
+//                        $errorText .= "Profiles, that marked as excluded: $excluded \n";
+//                        $errorText .= "Profiles, that not marked as excluded: $notExcluded \n";
+//                        throw new Exception($errorText);
+//                    }
                     if (count($excludedArray) === 0) {
                         $this->hydrateProperty($obj, $data, $info, $property, $profiles, $includeDefaultProfile);
                     }
