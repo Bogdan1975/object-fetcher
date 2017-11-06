@@ -210,7 +210,7 @@ class BaseObject
      *
      * @return $this
      */
-    public static function createInstance($data = null, array $profiles = [], $includeDefaultProfile = true)
+    public static function createInstance($data = null, $profiles = [], $includeDefaultProfile = true)
     {
         $fetcher = ObjectFetcherService::getInstance();
         $obj = empty($data) ? ObjectFetcherService::createObject(static::class) : $fetcher->fetch(static::class, $data, $profiles, $includeDefaultProfile);
