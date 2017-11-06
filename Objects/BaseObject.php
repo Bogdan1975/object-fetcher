@@ -235,7 +235,7 @@ class BaseObject
      * @throws \Exception
      * @throws Exception
      */
-    public function fetch($data, array $profiles = [], $includeDefaultProfile = true)
+    public function fetch($data, $profiles = [], $includeDefaultProfile = true)
     {
         $fetcher = ObjectFetcherService::getInstance();
         $fetcher->fetch($this, $data, $profiles, $includeDefaultProfile);
