@@ -645,7 +645,11 @@ class ObjectFetcherService
                 break;
             case self::TYPE_DATE:
                 try {
-                    $newValue = \DateTime::createFromFormat($info['inputDateTimeFormat'], $value);
+                    if ($value instanceof \DateTimeInterface) {
+                        $newValue = $value;
+                    } else {
+                        $newValue = \DateTime::createFromFormat($info['inputDateTimeFormat'], $value);
+                    }
                 } catch (\Exception $e) {
                     throw new TypeConversionException("Can't parse '$value' datetime value to '{$info['inputDateTimeFormat']}' format");
                 }

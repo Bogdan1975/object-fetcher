@@ -19,8 +19,11 @@ class BaseObject
     const PROPERTY_NAMES_DATA = 'data';
     const PROPERTY_NAMES_SNAKE = 'snake';
 
-    const FILTER_ALL = 'all';
-    const FILTER_DIRTY_ONLY = 'dirty';
+//    const FILTER_ALL = 'all';
+//    const FILTER_DIRTY_ONLY = 'dirty';
+    const FILTER_ALL = 0;
+    const FILTER_DIRTY_ONLY = 1;
+    const FILTER_EXCLUDE_NULL = 2;
 
     const DISALLOWED_PROPERTIES = [
         'metaInfo',
@@ -108,7 +111,7 @@ class BaseObject
     }
 
 
-    public function convertToArray(string $properyNames = self::PROPERTY_NAMES_OBJECT, string $filter = self::FILTER_ALL, $profiles = [], $includeDefaultProfile = true)
+    public function convertToArray(string $properyNames = self::PROPERTY_NAMES_OBJECT, int $filter = self::FILTER_ALL, $profiles = [], $includeDefaultProfile = true)
     {
         if (!is_array($profiles)) {
             $profiles = (array)$profiles;
@@ -142,11 +145,14 @@ class BaseObject
 
             $map = isset($this->metaInfo[$propName], $this->metaInfo[$propName]['map']) ? $this->metaInfo[$propName]['map'] : null;
             $needToExtract = true;
-            if (self::FILTER_DIRTY_ONLY === $filter && isset($this->metaInfo[$propName]) && array_key_exists('initValue',$this->metaInfo[$propName])) {
+            if ($filter & self::FILTER_DIRTY_ONLY && isset($this->metaInfo[$propName]) && array_key_exists('initValue',$this->metaInfo[$propName])) {
                 $oldValue = $this->metaInfo[$propName]['initValue'];
                 if ($oldValue === $currentValue) {
                     $needToExtract = false;
                 }
+            }
+            if ($filter & self::FILTER_EXCLUDE_NULL && null === $currentValue) {
+                $needToExtract = false;
             }
             if ($needToExtract) {
                 switch ($properyNames) {
@@ -170,7 +176,7 @@ class BaseObject
         return $data;
     }
 
-    private function convertValue($value, string $properyNames, array $info = null, string $filter, $profiles = [], $includeDefaultProfile = true) {
+    private function convertValue($value, string $properyNames, array $info = null, int $filter, $profiles = [], $includeDefaultProfile = true) {
         $result = $value;
         $processed = false;
         if (is_array($value) || (is_object($value) && $value instanceof \IteratorAggregate)) {
