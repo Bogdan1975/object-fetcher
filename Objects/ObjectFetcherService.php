@@ -90,6 +90,11 @@ class ObjectFetcherService
      */
     private static $instance;
 
+    /**
+     * @var ReflectionHelper
+     */
+    private static $reflectionHelper;
+
     public function __construct(Reader $annotationReader, $config)
     {
         self::$annotationReader = $annotationReader;
@@ -131,6 +136,8 @@ class ObjectFetcherService
         ];
 
         self::$instance = $this;
+
+        self::$reflectionHelper = new ReflectionHelper(self::$annotationReader);
     }
 
     /**
@@ -171,13 +178,22 @@ class ObjectFetcherService
         return $this;
     }
 
-    private static function getPropertyAnnotation(\ReflectionClass $reflection, \ReflectionProperty $property)
+    /**
+     * @param \ReflectionClass $reflection
+     * @param \ReflectionProperty $property
+     *
+     * @return mixed
+     *
+     * @throws Exception
+     * @throws \Exception
+     */
+    private static function getPropertyAnnotationInfo(\ReflectionClass $reflection, \ReflectionProperty $property)
     {
-        $fieldInfoAnnot = static::$annotationReader->getPropertyAnnotation($property, Field::class);
-        if ($parentReflection = $reflection->getParentClass()) {
+        $fieldInfoAnnot = self::$reflectionHelper->getPropertyAnnotation($property, Field::class);
+        if ($parentReflection = self::$reflectionHelper->getParentReflection($reflection)) {
             if ($parentReflection->hasProperty($property->getName())) {
                 $parentProperty = $parentReflection->getProperty($property->getName());
-                $parentFieldInfoAnnot = self::getPropertyAnnotation($parentReflection, $parentProperty);
+                $parentFieldInfoAnnot = self::getPropertyAnnotationInfo($parentReflection, $parentProperty);
                 if (!empty($parentFieldInfoAnnot)) {
                     if (null === $fieldInfoAnnot) {
                         $fieldInfoAnnot = $parentFieldInfoAnnot;
@@ -191,17 +207,25 @@ class ObjectFetcherService
         return $fieldInfoAnnot;
     }
 
+    /**
+     * @param \ReflectionClass $reflection
+     *
+     * @return array
+     *
+     * @throws Exception
+     * @throws \Exception
+     */
     public static function collectMetaDataForReflection(\ReflectionClass $reflection)
     {
         // @ToDo: Винести на зовні, щоб не було залежності від Doctrine. Targus. 07.08.2017
         if ($reflection->implementsInterface(\Doctrine\ORM\Proxy\Proxy::class)) {
-            $reflection = $reflection->getParentClass();
+            $reflection = self::$reflectionHelper->getParentReflection($reflection);
         }
         $className = $reflection->getName();
-        $properties = $reflection->getProperties();
+        $properties = self::$reflectionHelper->getPropertiesReflection($reflection);
 
         /** @var Defaults $classDefaults */
-        $classDefaults = self::$annotationReader->getClassAnnotation($reflection, Defaults::class);
+        $classDefaults = self::$reflectionHelper->getClassAnnotation($reflection, Defaults::class);
         $defaults = [
             'required' => $classDefaults && null !== $classDefaults->required ? $classDefaults->required : self::$defaults['required'],
             'profile' => $classDefaults && null !== $classDefaults->profile ? $classDefaults->profile : self::$defaults['profile'],
@@ -212,7 +236,7 @@ class ObjectFetcherService
         $infoArray = [];
         foreach ($properties as $property) {
             /** @var Field|null $fieldInfoAnnot */
-            $fieldInfoAnnot = self::getPropertyAnnotation($reflection, $property);
+            $fieldInfoAnnot = self::getPropertyAnnotationInfo($reflection, $property);
             $info = [];
             if ($fieldInfoAnnot) {
                 $types = static::$propertyInfoExtractor->getTypes($className, $property->getName());
@@ -230,19 +254,24 @@ class ObjectFetcherService
         ];
     }
 
+    /**
+     * @param $obj
+     * @throws Exception
+     * @throws \Exception
+     */
     public static function collectMetaData($obj)
     {
-        $reflection = new \ReflectionClass($obj);
+        $reflection = self::$reflectionHelper->getClassReflection($obj);
         // @ToDo: Винести на зовні, щоб не було залежності від Doctrine. Targus. 07.08.2017
         if ($reflection->implementsInterface(\Doctrine\ORM\Proxy\Proxy::class)) {
-            $reflection = $reflection->getParentClass();
+            $reflection = self::$reflectionHelper->getParentReflection($reflection);
         }
 
         $data = self::collectMetaDataForReflection($reflection);
         $defaults = $data['defaults'];
         $infoArray = $data['info'];
 
-        $properties = $reflection->getProperties();
+        $properties = self::$reflectionHelper->getPropertiesReflection($reflection);
 
         if ($obj instanceof BaseObject) {
             $obj->setDefaults($defaults);
@@ -264,6 +293,12 @@ class ObjectFetcherService
         }
     }
 
+    /**
+     * @param string $className
+     * @return mixed
+     * @throws Exception
+     * @throws \Exception
+     */
     public static function createObject(string $className)
     {
         $obj = new $className();
@@ -299,14 +334,14 @@ class ObjectFetcherService
         } elseif (!is_string($className)) {
             throw new Exception('ObjectFetcherService::fetch. First parameter should be a string or an object');
         }
-        $reflection = new \ReflectionClass($className);
-        $properties = $reflection->getProperties();
+        $reflection = self::$reflectionHelper->getClassReflection($className);
+        $properties = self::$reflectionHelper->getPropertiesReflection($reflection);
 
         /** @var BaseObject $obj */
         if ($reflection->implementsInterface( ClassDefinderInterface::class)) {
             $className = $className::getClassByData($data);
-            $reflection = new \ReflectionClass($className);
-            $properties = $reflection->getProperties();
+            $reflection = self::$reflectionHelper->getClassReflection($className);
+            $properties = self::$reflectionHelper->getPropertiesReflection($reflection);
         }
         if (!isset($obj)) {
             $obj = self::createObject($className);
@@ -425,6 +460,7 @@ class ObjectFetcherService
      * @throws Exception
      * @throws MissingMandatoryField
      * @throws ValidationError
+     * @throws \Exception
      */
     private function hydrateProperty($obj, $data, $info, \ReflectionProperty $property, $profiles, $includeDefaultProfile)
     {
@@ -549,6 +585,15 @@ class ObjectFetcherService
         return $newStr;
     }
 
+    /**
+     * @param object $obj
+     * @param string $propName
+     *
+     * @return mixed
+     *
+     * @throws Exception
+     * @throws \Exception
+     */
     public static function getValueFromObject($obj, $propName)
     {
         $getter = 'get' . ucfirst($propName);
@@ -562,15 +607,15 @@ class ObjectFetcherService
             // @ToDo: Розібратися, може воно зайве та викосити. Targus. 04.08.2017
             if (!property_exists($obj, $propName)) {
                 // @ToDo: Make exceprion. Targus. 17.07.2017
-                throw new \Exception();
+                throw new Exception();
             }
 
-            $property = new \ReflectionProperty(get_class($obj), $propName);
+            $property = self::$reflectionHelper->getPropertyReflection(get_class($obj), $propName);
 
             $modifiers = $property->getModifiers();
             if ($modifiers & (\ReflectionProperty::IS_PRIVATE | \ReflectionProperty::IS_PROTECTED)) {
                 if (in_array($propName, ['name', 'class'], false)) {
-                    throw new \Exception(
+                    throw new Exception(
                         "Impossible to make accessible private property with name 'class' or 'name'"
                     );
                 }
@@ -618,6 +663,18 @@ class ObjectFetcherService
         ];
     }
 
+    /**
+     * @param mixed $value
+     * @param array $info
+     * @param array $profiles
+     * @param bool $includeDefaultProfile
+     *
+     * @return bool|\DateTime|\DateTimeInterface|float|int|null|string
+     *
+     * @throws Exception
+     * @throws TypeConversionException
+     * @throws \Exception
+     */
     private function fetchToTypeSimple($value, $info, $profiles, $includeDefaultProfile)
     {
         $type = $info['type'];
@@ -672,6 +729,18 @@ class ObjectFetcherService
         return $newValue;
     }
 
+    /**
+     * @param mixed $value
+     * @param array $info
+     * @param array $profiles
+     * @param bool $includeDefaultProfile
+     *
+     * @return array|bool|\DateTime|\DateTimeInterface|float|int|null|string
+     *
+     * @throws Exception
+     * @throws TypeConversionException
+     * @throws \Exception
+     */
     private function fetchToType($value, $info, $profiles, $includeDefaultProfile)
     {
         $isArray = $info['isArray'];
@@ -696,6 +765,16 @@ class ObjectFetcherService
         return true;
     }
 
+    /**
+     * @param string $className
+     * @param array $created
+     *
+     * @return array
+     *
+     * @throws Exception
+     * @throws TypeConversionException
+     * @throws \Exception
+     */
     public function createInterface(string $className, array $created = [])
     {
         $tmp = explode('\\', $className);
@@ -708,8 +787,8 @@ class ObjectFetcherService
         $classText = "export class $className_ implements $interfaceName {" . PHP_EOL;
         $text = 'export interface ' . $interfaceName . ' {' . PHP_EOL;
 
-        $reflection = new \ReflectionClass($className);
-        $properties = $reflection->getProperties();
+        $reflection = self::$reflectionHelper->getClassReflection($className);
+        $properties = self::$reflectionHelper->getPropertiesReflection($reflection);
 
         /** @var BaseObject $obj */
 //        $obj = self::createObject($className);
@@ -800,8 +879,6 @@ class ObjectFetcherService
         return $result;
     }
 
-
-
     private static function convertTypeToTypescript(string $type)
     {
         if (!in_array($type, self::TYPES, false) && !class_exists($type)) {
@@ -816,6 +893,16 @@ class ObjectFetcherService
         return $newType;
     }
 
+    /**
+     * @param string $className
+     * @param array $created
+     *
+     * @return array
+     *
+     * @throws Exception
+     * @throws TypeConversionException
+     * @throws \Exception
+     */
     public function createJsClass(string $className, array $created = [])
     {
         $tmp = explode('\\', $className);
@@ -826,8 +913,8 @@ class ObjectFetcherService
         $classText .= '    this.data_ = data;' . PHP_EOL;
         $classText .= '    for(prop in data) {' . PHP_EOL;
 
-        $reflection = new \ReflectionClass($className);
-        $properties = $reflection->getProperties();
+        $reflection = self::$reflectionHelper->getClassReflection($className);
+        $properties = self::$reflectionHelper->getPropertiesReflection($reflection);
 
         /** @var BaseObject $obj */
 //        $obj = self::createObject($className);
@@ -899,5 +986,6 @@ class ObjectFetcherService
     {
         return self::$instance;
     }
+
 
 }

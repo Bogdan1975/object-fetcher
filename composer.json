@@ -2,7 +2,7 @@
   "name": "targus/object-fetcher",
   "type": "symfony-bundle",
   "description": "Fetch data to typed objects",
-  "version": "1.0.0-beta18",
+  "version": "1.0.0-RC1",
   "keywords": ["typing", "api", "webhook", "fetch", "fetcher", "conversion", "validation"],
   "license": "MIT",
   "authors": [
@@ -13,8 +13,9 @@
     }
   ],
   "require": {
-    "php": "~7.0 || ~7.1",
+    "php": "~7.0",
     "phpdocumentor/reflection-docblock": "~3.1",
+    "doctrine/orm": "~2.0",
     "doctrine/annotations": "1.*"
   },
   "autoload": {

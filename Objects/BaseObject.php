@@ -19,8 +19,6 @@ class BaseObject
     const PROPERTY_NAMES_DATA = 'data';
     const PROPERTY_NAMES_SNAKE = 'snake';
 
-//    const FILTER_ALL = 'all';
-//    const FILTER_DIRTY_ONLY = 'dirty';
     const FILTER_ALL = 0;
     const FILTER_DIRTY_ONLY = 1;
     const FILTER_EXCLUDE_NULL = 2;
