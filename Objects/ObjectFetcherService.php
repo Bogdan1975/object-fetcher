@@ -475,7 +475,9 @@ class ObjectFetcherService
             if (!$this->ignoreMandatory && $info['required']) {
                 throw new MissingMandatoryField("Field '$propName' is mandatory");
             }
-
+            
+            throw $e;
+        } catch (\Exception $e) {
             // GET VALUE
             $currentValue = self::getValueFromObject($obj, $propName);
             if (!$info['default']) {
