@@ -466,28 +466,39 @@ class ObjectFetcherService
     {
         $propName = $property->getName();
         $className = get_class($obj);
-        $dataPropName =  $info['sourceName'] ?? $propName;
-        try {
-            $tmp = self::getValueFromData($data, $dataPropName);
-            $value = $tmp['value'];
-            $mappedFrom = $tmp['mappedFrom'];
-        } catch (MissingMandatoryField $e) {
-            if (!$this->ignoreMandatory && $info['required']) {
-                throw new MissingMandatoryField("Field '$propName' is mandatory");
+//        $dataPropName =  $info['sourceName'] ?? $propName;
+        $fetched = false;
+        if (!empty($info['sourceName'])) {
+            try {
+                $tmp = self::getValueFromData($data, $info['sourceName']);
+                $value = $tmp['value'];
+                $mappedFrom = $tmp['mappedFrom'];
+                $fetched = true;
+            } catch (MissingMandatoryField $e) {
+
             }
-            
-            throw $e;
-        } catch (\Exception $e) {
-            // GET VALUE
-            $currentValue = self::getValueFromObject($obj, $propName);
-            if (!$info['default']) {
-                if ($obj instanceof BaseObject) {
-                    $obj->setInitValue($propName, $currentValue);
+        }
+        if (!$fetched) {
+            try {
+                $tmp = self::getValueFromData($data, $propName);
+                $value = $tmp['value'];
+                $mappedFrom = $tmp['mappedFrom'];
+            } catch (MissingMandatoryField $e) {
+                if (!$this->ignoreMandatory && $info['required']) {
+                    throw new MissingMandatoryField("Field '$propName' is mandatory");
                 }
-                return;
+
+                // GET VALUE
+                $currentValue = self::getValueFromObject($obj, $propName);
+                if (!$info['default']) {
+                    if ($obj instanceof BaseObject) {
+                        $obj->setInitValue($propName, $currentValue);
+                    }
+                    return;
+                }
+                $value = $info['default'] ?? $currentValue;
+                $mappedFrom = null;
             }
-            $value = $info['default'] ?? $currentValue;
-            $mappedFrom = null;
         }
         if (null === $value && !$this->ignoreNotNullable && !$info['nullable']) {
             throw new MissingMandatoryField("Field '$propName' is not nullable. Class '$className'");
